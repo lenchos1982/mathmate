@@ -1134,9 +1134,14 @@
                     const ocrData = await ocrResp.json();
                     
                     if (ocrData.words_result && ocrData.words_result.length > 0) {
-                        const text = ocrData.words_result.map(w => w.words).join('\n');
-                        document.getElementById('ocrResult').textContent = text;
-                        state.problemText = text;
+                        const text = ocrData.words_result.map(w => w.words).join('\n').trim();
+                        // 检查OCR结果是否有效（不是"-"或其他无效字符）
+                        if (text && text !== '-' && text.length >= 2) {
+                            document.getElementById('ocrResult').textContent = text;
+                            state.problemText = text;
+                        } else {
+                            document.getElementById('ocrResult').textContent = '未能识别到有效文字，请手动输入';
+                        }
                     } else {
                         document.getElementById('ocrResult').textContent = '未能识别到文字，请手动输入';
                     }
