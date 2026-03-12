@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   // 确定使用的 URL
-  const url = apiUrl || 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions';
+  const url = apiUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
   
   // 构建消息
   let msg = messages;
