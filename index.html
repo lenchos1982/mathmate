@@ -1250,13 +1250,18 @@
             let response;
             try {
                 // 先尝试直接调用
-                response = await fetch(apiEndpoint, {
+                response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${state.apiKey}`
                     },
-                    body: JSON.stringify(config.body)
+                    body: JSON.stringify({
+                                apiKey: state.apiKey,
+                                model: config.body.model,
+                                messages: config.body.messages,
+                                apiUrl: state.apiUrl
+                            })
                 });
             } catch (fetchErr) {
                 console.error('直接调用失败:', fetchErr);
@@ -1276,7 +1281,12 @@
                                 'Content-Type': 'application/json',
                                 'Authorization': `Bearer ${state.apiKey}`
                             },
-                            body: JSON.stringify(config.body)
+                            body: JSON.stringify({
+                                apiKey: state.apiKey,
+                                model: config.body.model,
+                                messages: config.body.messages,
+                                apiUrl: state.apiUrl
+                            })
                         });
                         proxySuccess = true;
                         break;
