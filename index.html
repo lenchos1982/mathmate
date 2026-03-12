@@ -1154,6 +1154,13 @@
 
         // ========== Analysis & AI ==========
         function startAnalysis() {
+            // 检查API设置
+            if (!state.apiKey) {
+                alert('请先在设置中填写API Key并保存！');
+                showPage('settings');
+                return;
+            }
+            
             // Get problem text
             const ocrSection = document.getElementById('ocrSection');
             if (!ocrSection.classList.contains('hidden')) {
