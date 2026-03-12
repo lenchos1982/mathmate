@@ -834,6 +834,12 @@
     </div>
 
     <script>
+        // ========== System Prompt (固定常量) ==========
+        const SYSTEM_PROMPT = `你是小学数学老师，善于引导孩子思考。
+原则：不直接给答案，通过提问引导孩子。
+孩子说对了大力鼓励给下一步提示；说错了温和提示"想想已知什么？要求什么？"
+回答简短适合小学生，不超过50字。输出JSON：{"message":"回复","isComplete":true/false}`;
+
         // ========== Global State ==========
         const state = {
             apiKey: '',
@@ -1266,36 +1272,52 @@
             }
         }
 
-        async function callAI(prompt) {
+        // callAI支持两种调用方式：
+        // 1. callAI(prompt) - 简单模式，直接用user角色
+        // 2. callAI(messages) - 完整模式，messages数组
+        async function callAI(promptOrMessages) {
+            // 判断输入类型
+            let messages;
+            if (Array.isArray(promptOrMessages)) {
+                // 完整messages格式
+                messages = promptOrMessages;
+            } else {
+                // 简单prompt格式，自动添加system prompt
+                messages = [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: promptOrMessages }
+                ];
+            }
+            
             // 不同模型有不同的配置
             const modelConfigs = {
                 deepseek: { 
                     name: 'deepseek-chat', 
-                    body: { model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'deepseek-chat', messages: messages, temperature: 0.7 }
                 },
                 'qwen-cn': { 
                     name: 'qwen-plus', 
-                    body: { model: 'qwen-plus', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'qwen-plus', messages: messages, temperature: 0.7 }
                 },
                 'qwen-intl': { 
                     name: 'qwen-plus', 
-                    body: { model: 'qwen-plus', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'qwen-plus', messages: messages, temperature: 0.7 }
                 },
                 douyin: { 
                     name: 'doubao-pro-32k', 
-                    body: { model: 'doubao-pro-32k', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'doubao-pro-32k', messages: messages, temperature: 0.7 }
                 },
                 minimax: { 
                     name: 'abab6.5s-chat', 
-                    body: { model: 'abab6.5s-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'abab6.5s-chat', messages: messages, temperature: 0.7 }
                 },
                 zhipu: { 
                     name: 'glm-4-flash', 
-                    body: { model: 'glm-4-flash', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'glm-4-flash', messages: messages, temperature: 0.7 }
                 },
                 moonshot: { 
                     name: 'moonshot-v1-8k', 
-                    body: { model: 'moonshot-v1-8k', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                    body: { model: 'moonshot-v1-8k', messages: messages, temperature: 0.7 }
                 }
             };
             
@@ -1601,26 +1623,28 @@
         }
 
         async function getSmartResponse(userInput) {
-            // 构建prompt，包含system prompt
-            const prompt = `${SYSTEM_PROMPT}
+            // 构建完整的messages数组，包含system prompt
+            const userContent = `题目：${state.problemText}
+已知：${problemAnalysis?.numbers?.join('、') || '?'}
+关键词：${problemAnalysis?.keywords?.join('、') || '?'}
+问题：${problemAnalysis?.question || '?'}
 
-题目：${state.problemText}
-- 已知：${problemAnalysis?.numbers?.join('、') || '?'}
-- 关键词：${problemAnalysis?.keywords?.join('、') || '?'}
-- 问题：${problemAnalysis?.question || '?'}
-
-对话：${conversationHistory.slice(-3).map(m => `${m.role==='user'?'孩子':'老师'}:${m.content}`).join('；')}
+对话历史：${conversationHistory.slice(-3).map(m => `${m.role==='user'?'孩子':'老师'}:${m.content}`).join('；')}
 
 孩子说：${userInput}
 
 判断孩子是否说对，说对了给下一步提示，说错了温和引导。`;
 
-            const response = await callAI(prompt);
-            const data = JSON.parse(response);
-            return data;
-        }
+            const messages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                ...conversationHistory.slice(-6).map(m => ({
+                    role: m.role === 'user' ? 'user' : 'assistant',
+                    content: m.content
+                })),
+                { role: 'user', content: userContent }
+            ];
 
-            const response = await callAI(prompt);
+            const response = await callAI(messages);
             const data = JSON.parse(response);
             return data;
         }
