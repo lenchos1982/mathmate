@@ -595,17 +595,10 @@
                 
                 <div class="form-group">
                     <label>🤖 AI 大模型</label>
-                    <select id="modelSelect" onchange="onModelChange()">
-                        <option value="deepseek">DeepSeek (深度求索)</option>
-                        <option value="kimi">月之暗面 (Kimi)</option>
-                        <option value="qwen-turbo">阿里百炼 (通义Turbo)</option>
-                        <option value="qwen-plus">阿里百炼 (通义Plus)</option>
-                        <option value="qwen-max">阿里百炼 (通义Max)</option>
-                        <option value="ernie-4">百度文心一言</option>
-                        <option value="doubao-pro-4k">火山引擎 (豆包Pro)</option>
-                        <option value="glm-4">智谱 (GLM-4)</option>
-                        <option value="hunyuan">腾讯云 (混元)</option>
-                        <option value="abab6.5s">MiniMax (ABAB 6.5s)</option>
+                    <select id="modelSelect">
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="qwen">阿里通义 (Qwen)</option>
                         <option value="custom">自定义 API</option>
                     </select>
                 </div>
@@ -875,8 +868,6 @@
             
             if (state.model === 'custom') {
                 document.getElementById('apiUrlGroup').style.display = 'block';
-            } else {
-                onModelChange();
             }
             
             loadVoices();
@@ -899,6 +890,21 @@
             
             alert('设置已保存！');
         }
+
+        document.getElementById('modelSelect').addEventListener('change', function() {
+            const group = document.getElementById('apiUrlGroup');
+            if (this.value === 'custom') {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+                const urls = {
+                    deepseek: 'https://api.deepseek.com/v1',
+                    openai: 'https://api.openai.com/v1',
+                    qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+                };
+                document.getElementById('apiUrl').value = urls[this.value] || '';
+            }
+        });
 
         // ========== Voice (TTS & STT) ==========
         let voices = [];
@@ -1156,45 +1162,11 @@
 
         async function callAI(prompt) {
             const models = {
-                // DeepSeek
-                deepseek: { name: 'deepseek-chat', url: 'https://api.deepseek.com/v1' },
-                // Kimi 月之暗面
-                kimi: { name: 'moonshot-v1-8k', url: 'https://api.moonshot.cn/v1' },
-                // 阿里通义
-                'qwen-turbo': { name: 'qwen-turbo', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-                'qwen-plus': { name: 'qwen-plus', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-                'qwen-max': { name: 'qwen-max', url: 'https://dashscope.aliyuncs.com/compatible-mode/v1' },
-                // 百度文心
-                'ernie-4': { name: 'ernie-4.0-8k', url: 'https://qianfan.baidubce.com/v2' },
-                // 字节豆包
-                'doubao-pro-4k': { name: 'doubao-pro-4k', url: 'https://ark.cn-beijing.volces.com/api/v3' },
-                // 智谱清言
-                'glm-4': { name: 'glm-4', url: 'https://open.bigmodel.cn/api/paas/v4' },
-                // 腾讯混元
-                'hunyuan': { name: 'hunyuan-latest', url: 'https://hunyuan.cn-shenzhen.tencentcloudapi.com' },
-                // MiniMax
-                'abab6.5s': { name: 'abab6.5s-chat', url: 'https://api.minimax.chat/v1' },
-                // 自定义
+                deepseek: { name: 'deepseek-chat', url: state.apiUrl },
+                openai: { name: 'gpt-4o-mini', url: state.apiUrl },
+                qwen: { name: 'qwen-plus', url: state.apiUrl },
                 custom: { name: 'gpt-4o-mini', url: state.apiUrl }
             };
-            
-            // 模型切换时自动跳转端点
-            function onModelChange() {
-                const model = document.getElementById('modelSelect').value;
-                const apiUrlInput = document.getElementById('apiUrl');
-                const apiUrlGroup = document.getElementById('apiUrlGroup');
-                
-                if (model === 'custom') {
-                    apiUrlGroup.style.display = 'block';
-                    apiUrlInput.placeholder = '请输入自定义 API 地址';
-                } else {
-                    apiUrlGroup.style.display = 'block';
-                    const modelInfo = models[model];
-                    if (modelInfo) {
-                        apiUrlInput.value = modelInfo.url;
-                    }
-                }
-            }
             
             const modelInfo = models[state.model] || models.deepseek;
             
@@ -1225,47 +1197,21 @@
         }
 
         async function generateGuidanceSteps() {
-            const prompt = `你是小学数学引导老师。请严格按照以下4步引导小朋友解答这道数学题。
-
+            const prompt = `这道小学数学题，请分3步引导解答：
 题目：${state.problemText}
 
-## 引导流程（必须严格按这个格式输出）
+请用苏格拉底式提问，引导小朋友自己思考出答案。每一步都要：
+1. 一个小问题
+2. 提示思考方向
+3. 给出鼓励的话
 
-### 第1步：审题
-必须问学生这三个问题：
-- "题目已知哪些数？"
-- "要求什么？"
-- "有没有关键词？"
+格式：
+第1步：[步骤名]
+问题：[引导问题]
+提示：[给一点点提示]
 
-### 第2步：建模（数量关系）
-根据题目特点，选择性问以下问题引导学生识别数量关系：
-- "比什么少？" → 减法
-- "比什么多？" → 加法
-- "谁大谁小？"
-- "已知什么？求什么？"
-- "几倍呢？" → 乘法
-- "几分之几呢？" → 除法
-- "合计/总共？" → 加法
-- "还剩/还差？" → 减法或乘法
-
-### 第3步：分步计算（核心！重点！）
-⚠️ 特别注意：不是问"你能列出算式吗？"
-而是一步一步引导学生思考：
-- 第一问："根据已知条件，第一步可以算出什么？"
-- 第二问："然后算什么？"
-- 第三问："接下来呢？"
-- ...一步一步引导，直到算出最终答案
-
-### 第4步：验证
-问学生："代入题目检查，对不对？"
-
-请按以下JSON格式输出（每步都要有具体的引导问题和提示）：
-{
-  "step1": {"title": "审题", "question": "具体问题1+问题2+问题3", "hint": "给学生的提示"},
-  "step2": {"title": "建模", "question": "选择最合适的建模问题", "hint": "提示学生找数量关系"},
-  "step3": {"title": "分步计算", "question": "第一步问：根据已知条件，第一步可以算出什么？", "hint": "引导学生往哪想"},
-  "step4": {"title": "验证", "question": "代入题目检查，对不对？", "hint": "提醒检查什么"}
-}`;
+第2步：...
+第3步：...`;
 
             try {
                 const response = await callAI(prompt);
@@ -1273,48 +1219,29 @@
                 state.currentStep = 0;
                 renderGuidanceSteps();
             } catch (err) {
-                // Use default steps with new flow
+                // Use default steps
                 state.guidanceSteps = [
-                    { title: '第1步-审题', question: '题目已知哪些数？要求什么？', hint: '仔细看看题目中的关键词' },
-                    { title: '第2步-建模', question: '比什么多/少？已知什么？求什么？', hint: '找找题目中的数量关系' },
-                    { title: '第3步-分步计算', question: '根据已知条件，第一步可以算出什么？', hint: '一步步来，先算第一步' },
-                    { title: '第4步-验证', question: '代入题目检查，对不对？', hint: '把答案代回去算一算' }
+                    { title: '理解题意', question: '这道题在问我们什么？', hint: '仔细看看题目中的数字和关键词' },
+                    { title: '找规律', question: '这些数字之间有什么关系？', hint: '可以用画图或数数的方法' },
+                    { title: '算一算', question: '现在能算出答案了吗？', hint: '把找到的规律用计算表示' }
                 ];
-                state.currentStep = 0;
                 renderGuidanceSteps();
             }
         }
 
         function parseGuidanceSteps(text) {
-            // Try to parse JSON format first
-            try {
-                const jsonMatch = text.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const json = JSON.parse(jsonMatch[0]);
-                    return [
-                        { title: '第1步-审题', question: json.step1?.question || '', hint: json.step1?.hint || '' },
-                        { title: '第2步-建模', question: json.step2?.question || '', hint: json.step2?.hint || '' },
-                        { title: '第3步-分步计算', question: json.step3?.question || '', hint: json.step3?.hint || '' },
-                        { title: '第4步-验证', question: json.step4?.question || '', hint: json.step4?.hint || '' }
-                    ];
-                }
-            } catch (e) {
-                // Not JSON, try other formats
-            }
-            
             const steps = [];
-            // Match new 4-step format: 第X步-步骤名
-            const stepMatches = text.match(/第(\d)步[^-]*-([^：:]*)[：:]([\s\S]*?)(?=第\d步|$)/g);
+            const stepMatches = text.match(/第(\d)步[:：]([\s\S]*?)(?=第\d步|$)/g);
             
             if (stepMatches) {
                 stepMatches.forEach(match => {
-                    const titleMatch = match.match(/第(\d)步[^-]*-([^：:]*)/);
-                    const questionMatch = match.match(/问题[：:](.*?)(?=提示|$)/s);
-                    const hintMatch = match.match(/提示[：:](.*)/s);
+                    const titleMatch = match.match(/[:：](.*?)[\n]/);
+                    const questionMatch = match.match(/问题[:：](.*?)(?=提示|$)/);
+                    const hintMatch = match.match(/提示[:：](.*)/);
                     
                     if (titleMatch) {
                         steps.push({
-                            title: titleMatch[2].trim(),
+                            title: titleMatch[1].trim(),
                             question: questionMatch ? questionMatch[1].trim() : '你能想到什么？',
                             hint: hintMatch ? hintMatch[1].trim() : '再想想看'
                         });
@@ -1322,38 +1249,15 @@
                 });
             }
             
-            // Fallback: try old format
             if (steps.length < 3) {
-                const oldMatches = text.match(/第(\d)步[:：]([\s\S]*?)(?=第\d步|$)/g);
-                if (oldMatches) {
-                    oldMatches.forEach(match => {
-                        const titleMatch = match.match(/[:：](.*?)[\n]/);
-                        const questionMatch = match.match(/问题[:：](.*?)(?=提示|$)/);
-                        const hintMatch = match.match(/提示[:：](.*)/);
-                        
-                        if (titleMatch) {
-                            steps.push({
-                                title: titleMatch[1].trim(),
-                                question: questionMatch ? questionMatch[1].trim() : '你能想到什么？',
-                                hint: hintMatch ? hintMatch[1].trim() : '再想想看'
-                            });
-                        }
-                    });
-                }
-            }
-            
-            // Ensure we have 4 steps with the correct flow
-            if (steps.length < 4) {
-                steps.length = 0;
                 steps.push(
-                    { title: '第1步-审题', question: '题目已知哪些数？要求什么？有没有关键词？', hint: '仔细看看题目中的已知条件和要求' },
-                    { title: '第2步-建模', question: '比什么多/少？已知什么？求什么？', hint: '找找题目中的数量关系' },
-                    { title: '第3步-分步计算', question: '根据已知条件，第一步可以算出什么？', hint: '一步步来，先算第一步，然后算什么？' },
-                    { title: '第4步-验证', question: '代入题目检查，对不对？', hint: '把答案代回去算一算' }
+                    { title: '理解题意', question: '这道题在问我们什么？', hint: '仔细看看题目中的数字' },
+                    { title: '找方法', question: '应该怎么算呢？', hint: '可以用画图帮忙' },
+                    { title: '算答案', question: '现在能算出答案了吗？', hint: '把数字加起来试试' }
                 );
             }
             
-            return steps.slice(0, 4);
+            return steps.slice(0, 3);
         }
 
         function renderGuidanceSteps() {
@@ -1366,19 +1270,15 @@
                 card.innerHTML = `
                     <span class="step-number">${i + 1}</span>
                     <strong>${step.title}</strong>
-                    ${i === state.currentStep ? `<p style="margin-top: 8px; font-size: 14px; color: var(--text-light);">${step.question}</p>` : ''}
+                    ${i === state.currentStep ? `<p style="margin-top: 8px;">${step.question}</p>` : ''}
                 `;
                 container.appendChild(card);
             });
             
-            // Show welcome message with step-specific guidance
-            const stepTitles = ['📝 审题', '🔢 建模', '📐 分步计算', '✅ 验证'];
+            // Show welcome message
             if (state.currentStep === 0) {
-                addMessage('ai', `小朋友，你好！🎉 我们来一起解答这道题。\n\n【${stepTitles[0]}】\n${state.guidanceSteps[0].question}`);
+                addMessage('ai', `小朋友，你好！🎉 这道题我们来一起想想。${state.guidanceSteps[0].question}`);
                 speak(state.guidanceSteps[0].question);
-            } else if (state.currentStep > 0 && state.currentStep < state.guidanceSteps.length) {
-                addMessage('ai', `【${stepTitles[state.currentStep]}】\n${state.guidanceSteps[state.currentStep].question}`);
-                speak(state.guidanceSteps[state.currentStep].question);
             }
         }
 
@@ -1427,38 +1327,8 @@
             state.hintLevel++;
             
             let hint = currentStep.hint;
-            
-            // 针对不同步骤给出更详细的提示
-            if (state.currentStep === 0) {
-                // 审题步骤
-                if (state.hintLevel === 1) {
-                    hint = '再仔细看看题目，题目中告诉我们的数字有哪些？';
-                } else {
-                    hint = '想想题目最后问的是什么？是要我们求什么？';
-                }
-            } else if (state.currentStep === 1) {
-                // 建模步骤
-                if (state.hintLevel === 1) {
-                    hint = '题目中有没有"比...多"或"比...少"这样的词？';
-                } else {
-                    hint = '把已知的数和要求的数分开，想一想它们之间的关系。';
-                }
-            } else if (state.currentStep === 2) {
-                // 分步计算步骤 - 这是核心！
-                if (state.hintLevel === 1) {
-                    hint = '根据我们刚才找到的关系，第一步可以先算出什么？';
-                } else if (state.hintLevel === 2) {
-                    hint = '算完第一步后，再想想接下来可以算什么？';
-                } else {
-                    hint = '一步一步来，把大题目拆成小题目，一个一个算。';
-                }
-            } else {
-                // 验证步骤
-                if (state.hintLevel === 1) {
-                    hint = '把你算出的答案代回题目里，看看能不能算出题目给出的条件？';
-                } else {
-                    hint = '从头到尾再算一遍，看看结果对不对。';
-                }
+            if (state.hintLevel > 1) {
+                hint = '没关系，我们再想想。如果把题目分成更小的部分...';
             }
             
             addMessage('ai', `💡 ${hint}`);
@@ -1475,6 +1345,10 @@
             }
             
             renderGuidanceSteps();
+            
+            const nextQ = state.guidanceSteps[state.currentStep];
+            addMessage('ai', `第${state.currentStep + 1}步完成啦！🎉\n\n${nextQ.question}`);
+            speak(nextQ.question);
         }
 
         function finishGuidance() {
