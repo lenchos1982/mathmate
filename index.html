@@ -1251,9 +1251,15 @@
             
             // 调用AI分析
             analyzeWithAI(state.problemText).then(() => {
-                // 分析完成后跳转到引导页面
-                showPage('guidance');
-                generateGuidanceSteps();
+                // 分析完成后显示结果和"开始解答"按钮，不自动跳转
+                document.getElementById('analysisContent').innerHTML = `
+                    <div style="line-height: 1.8;">
+                        ${state.analysis}
+                    </div>
+                    <button class="btn btn-primary" style="margin-top: 20px;" onclick="startGuidanceFromAnalysis()">
+                        开始解答 →
+                    </button>
+                `;
             }).catch(err => {
                 console.error('分析失败:', err);
                 alert('分析失败: ' + (err.message || '请检查API设置'));
@@ -1501,6 +1507,23 @@
         let problemAnalysis = null; // 题目分析结果
         
         function startGuidance() {
+            showPage('guidance');
+            document.getElementById('guidanceProblemText').textContent = state.problemText;
+            
+            // 清除之前的聊天记录
+            const messages = document.getElementById('messages');
+            if (messages) messages.innerHTML = '';
+            
+            // 清除之前的步骤提示
+            const hintDiv = document.getElementById('stepHint');
+            if (hintDiv) hintDiv.remove();
+            
+            // 初始化对话式引导
+            initConversationGuide();
+        }
+
+        // 从分析页面跳转到引导页面
+        function startGuidanceFromAnalysis() {
             showPage('guidance');
             document.getElementById('guidanceProblemText').textContent = state.problemText;
             
@@ -1839,7 +1862,7 @@
             const div = document.createElement('div');
             div.className = `message ${type}`;
             div.innerHTML = `
-                <div class="message-avatar">${type === 'ai' ? '🧠' : '👤'}</div>
+                <div class="message-avatar">${type === 'ai' ? '👩‍🏫' : '👤'}</div>
                 <div class="message-content">${content}</div>
             `;
             messages.appendChild(div);
