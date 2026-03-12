@@ -597,7 +597,8 @@
                     <label>🤖 AI 大模型</label>
                     <select id="modelSelect">
                         <option value="deepseek">DeepSeek</option>
-                        <option value="qwen">阿里百炼（通义千问）</option>
+                        <option value="qwen-cn">阿里百炼-中国版（通义千问）</option>
+                        <option value="qwen-intl">阿里百炼-国际版（新加坡）</option>
                         <option value="douyin">火山引擎（豆包）</option>
                         <option value="minimax">MiniMax</option>
                         <option value="zhipu">智谱</option>
@@ -758,16 +759,10 @@
                         🎤
                     </button>
                 </div>
-                
-                <div class="input-row">
-                    <input type="text" id="textInput" placeholder="说出你的答案或直接填写...">
-                    <button class="btn btn-primary" style="width: auto; padding: 12px 20px;" onclick="submitTextAnswer()">发送</button>
-                </div>
             </div>
 
             <div class="btn-row">
                 <button class="btn btn-outline" onclick="goHome()">← 首页</button>
-                <button class="btn btn-outline" onclick="skipStep()">⏭️ 跳过这步</button>
             </div>
         </div>
 
@@ -938,7 +933,8 @@
             // API端点自动切换逻辑
             const urls = {
                 deepseek: 'https://api.deepseek.com/v1',
-                qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                'qwen-cn': 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                'qwen-intl': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
                 douyin: 'https://ark.cn-beijing.volces.com/api/v3/',
                 minimax: 'https://api.minimax.chat/v1/',
                 zhipu: 'https://open.bigmodel.cn/api/paas/v4/',
@@ -952,7 +948,8 @@
         function updateApiUrlForModel(model) {
             const urls = {
                 deepseek: 'https://api.deepseek.com/v1',
-                qwen: 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                'qwen-cn': 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+                'qwen-intl': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
                 douyin: 'https://ark.cn-beijing.volces.com/api/v3/',
                 minimax: 'https://api.minimax.chat/v1/',
                 zhipu: 'https://open.bigmodel.cn/api/paas/v4/',
@@ -1254,7 +1251,11 @@
                     name: 'deepseek-chat', 
                     body: { model: 'deepseek-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
                 },
-                qwen: { 
+                'qwen-cn': { 
+                    name: 'qwen-plus', 
+                    body: { model: 'qwen-plus', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
+                },
+                'qwen-intl': { 
                     name: 'qwen-plus', 
                     body: { model: 'qwen-plus', messages: [{ role: 'user', content: prompt }], temperature: 0.7 }
                 },
@@ -1284,6 +1285,7 @@
             console.log('请求体:', JSON.stringify(config.body));
             
             // 显示在界面上帮助调试
+            document.getElementById('analysisContent').innerHTML = `
                 <div style="font-size:12px; color:#666; text-align:left;">
                 <p>模型: ${state.model}</p>
                 <p>URL: ${state.apiUrl}</p>
@@ -1365,40 +1367,56 @@
             let data;
             try {
                 const text = await response.text();
-                console.log('原始响应:', text);
+                console.log('原始响应状态:', response.status, response.statusText);
+                console.log('原始响应:', text.substring(0, 500));
                 if (!text || text.trim() === '') {
-                    throw new Error('响应为空');
+                    throw new Error('响应为空，状态码: ' + response.status);
                 }
                 data = JSON.parse(text);
             } catch (jsonErr) {
-                console.error('JSON解析错误:', jsonErr, '原始响应:', response);
+                console.error('JSON解析错误:', jsonErr.message);
+                console.error('响应状态:', response.status);
+                console.error('响应状态文本:', response.statusText);
                 throw new Error('响应解析失败: ' + response.status + ' ' + response.statusText);
             }
             console.log('AI响应:', data);
             
             // 通用解析 - 尝试多种响应格式
+            // 0. 先检查是否有错误
+            if (data.error) {
+                const errMsg = data.error.message || JSON.stringify(data.error);
+                console.error('API返回错误:', errMsg);
+                throw new Error('AI错误: ' + errMsg);
+            }
             // 1. OpenAI 格式: choices[0].message.content
             if (data.choices && data.choices[0]?.message?.content) {
+                console.log('使用格式1: OpenAI');
                 return data.choices[0].message.content;
             } 
-            // 2. 阿里百炼/其他API格式: output.choices[0].message.content
+            // 2. 阿里百炼格式: output.choices[0].message.content
             else if (data.output?.choices?.[0]?.message?.content) {
+                console.log('使用格式2: 阿里百炼output');
                 return data.output.choices[0].message.content;
             }
             // 3. 阿里百炼Coding Plan格式: content[0].text
             else if (data.content && data.content[0]?.text) {
+                console.log('使用格式3: 阿里百炼content');
                 return data.content[0].text;
             }
             // 4. 简单文本格式
             else if (data.text) {
+                console.log('使用格式4: text');
                 return data.text;
             }
-            // 5. 如果有错误
-            else if (data.error) {
-                throw new Error('AI错误: ' + (data.error.message || JSON.stringify(data.error)));
+            // 5. 直接返回整个data（兜底）
+            else if (typeof data === 'string') {
+                console.log('使用格式5: string');
+                return data;
             }
             else {
-                throw new Error('无法解析AI响应: ' + JSON.stringify(data));
+                // 打印完整响应用于调试
+                console.log('完整响应:', JSON.stringify(data));
+                throw new Error('无法解析AI响应: ' + JSON.stringify(data).substring(0, 200));
             }
         }
 
@@ -1549,6 +1567,9 @@
             container.innerHTML = '';
             
             state.guidanceSteps.forEach((step, i) => {
+                // 只显示当前步骤和之前的步骤，不显示未来的步骤
+                if (i > state.currentStep) return;
+                
                 const card = document.createElement('div');
                 card.className = `step-card ${i < state.currentStep ? 'completed' : ''} ${i === state.currentStep ? 'active' : ''}`;
                 
