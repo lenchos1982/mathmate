@@ -553,98 +553,6 @@
             font-weight: 600;
             color: var(--text);
         }
-
-        /* Toast 提示组件 */
-        .toast {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.85);
-            color: #fff;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            max-width: 80%;
-            text-align: center;
-            word-wrap: break-word;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
-        .toast.success {
-            background: rgba(46, 204, 113, 0.9);
-        }
-
-        .toast.error {
-            background: rgba(231, 76, 60, 0.9);
-        }
-
-        .toast.info {
-            background: rgba(52, 152, 219, 0.9);
-        }
-
-        /* 骨架屏 */
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: skeleton-loading 1.5s infinite;
-            border-radius: 4px;
-        }
-
-        @keyframes skeleton-loading {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        .skeleton-text {
-            height: 16px;
-            margin-bottom: 8px;
-        }
-
-        .skeleton-title {
-            height: 24px;
-            width: 60%;
-            margin-bottom: 12px;
-        }
-
-        /* 错题本页面 */
-        .wrong-item {
-            background: #FFF5F5;
-            border: 1px solid #FED7D7;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .wrong-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
-        }
-
-        .wrong-item .problem {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 8px;
-        }
-
-        .wrong-item .meta {
-            font-size: 12px;
-            color: var(--text-light);
-        }
-
-        .wrong-item .error-count {
-            color: var(--error);
-            font-weight: 600;
-        }
     </style>
 </head>
 <body>
@@ -673,21 +581,8 @@
                         <span class="icon">📊</span>
                         <span>学习报告</span>
                     </div>
-                    <div class="action-btn" onclick="showWrongAnswers()">
-                        <span class="icon">📝</span>
-                        <span>错题本</span>
-                    </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Wrong Answers Page -->
-        <div id="page-wrong" class="page">
-            <div class="card">
-                <h2 style="margin-bottom: 20px;">📝 错题本</h2>
-                <div id="wrongAnswersList"></div>
-            </div>
-            <button class="btn btn-outline" onclick="goHome()">← 返回首页</button>
         </div>
 
         <!-- Settings Page -->
@@ -747,6 +642,28 @@
                 </div>
                 <button class="btn btn-outline" onclick="testVoice()">测试语音</button>
             </div>
+        </div>
+
+        <!-- Camera Page -->
+        <div id="page-camera" class="page">
+            <div class="camera-container" id="cameraContainer">
+                <video id="camera" autoplay playsinline></video>
+                <img id="capturedImage" alt="已拍摄">
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-primary" id="captureBtn" onclick="capturePhoto()">📷 拍照</button>
+                <button class="btn btn-secondary hidden" id="retakeBtn" onclick="retakePhoto()">🔄 重拍</button>
+            </div>
+
+            <div class="btn-row">
+                <button class="btn btn-success hidden" id="confirmBtn" onclick="confirmPhoto()">✅ 确认</button>
+            </div>
+
+            <div class="tip info" style="margin-top: 20px;">
+                📸 将数学题目对准摄像头，点击拍照
+            </div>
+            <button class="btn btn-outline" style="margin-top: 10px;" onclick="goHome()">← 返回首页</button>
         </div>
 
         <!-- Input Page -->
@@ -920,34 +837,6 @@
 - 语气亲切鼓励，适合小学生
 - 不超过30字`;
 
-        // ========== Toast 提示组件 ==========
-        let toastTimer = null;
-        function showToast(message, type = 'info') {
-            // 移除已存在的 toast
-            const existingToast = document.querySelector('.toast');
-            if (existingToast) {
-                existingToast.remove();
-            }
-            if (toastTimer) {
-                clearTimeout(toastTimer);
-            }
-
-            // 创建 toast 元素
-            const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-
-            // 显示动画
-            setTimeout(() => toast.classList.add('show'), 10);
-
-            // 3秒后自动消失
-            toastTimer = setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
         // ========== Global State ==========
         const state = {
             apiKey: '',
@@ -965,8 +854,7 @@
             sessionData: {
                 problems: [],
                 knowledgePoints: [],
-                errors: [],
-                wrongAnswers: []  // 错题本
+                errors: []
             }
         };
 
@@ -1044,11 +932,11 @@
                 language: state.language
             }));
             
-            // Toast 提示
+            // 强制alert显示
             const langName = state.language === 'zh-TW' ? '中文繁体' : '简体中文';
             const msg = '设置已保存！\n模型: ' + selectedModelName + '\n语种: ' + langName;
             console.log(msg);
-            showToast(msg, 'success');
+            alert(msg);
             
             // 应用语言设置
             applyLanguage(state.language);
@@ -1236,7 +1124,7 @@
                 document.getElementById('voiceBtn').classList.add('listening');
                 recognition.start();
             } else {
-                showToast('您的浏览器不支持语音识别功能', 'error');
+                alert('您的浏览器不支持语音识别功能');
             }
         }
 
@@ -1246,7 +1134,59 @@
             }
         }
 
-        // ========== Manual Input ==========
+        // ========== Camera ==========
+        async function startCamera() {
+            if (!state.apiKey) {
+                alert('请先在设置中填写 API Key');
+                showPage('settings');
+                return;
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'environment' }
+                });
+                document.getElementById('camera').srcObject = stream;
+                showPage('camera');
+            } catch (err) {
+                console.error('摄像头错误:', err);
+                alert('无法访问摄像头，请确保已授权');
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('camera');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            state.capturedImage = canvas.toDataURL('image/jpeg');
+            const capturedImage = document.getElementById('capturedImage');
+            capturedImage.src = state.capturedImage;
+            capturedImage.style.display = 'block';
+            video.style.display = 'none';
+            
+            document.getElementById('captureBtn').classList.add('hidden');
+            document.getElementById('retakeBtn').classList.remove('hidden');
+            document.getElementById('confirmBtn').classList.remove('hidden');
+            
+            video.srcObject.getTracks().forEach(track => track.stop());
+        }
+
+        function retakePhoto() {
+            startCamera();
+            document.getElementById('capturedImage').style.display = 'none';
+            document.getElementById('camera').style.display = 'block';
+            document.getElementById('captureBtn').classList.remove('hidden');
+            document.getElementById('retakeBtn').classList.add('hidden');
+            document.getElementById('confirmBtn').classList.add('hidden');
+        }
+
+        function confirmPhoto() {
+            runOCR(state.capturedImage);
+        }
+
         function showManualInput() {
             // 直接显示输入页面，不需要切换tab
             showPage('input');
@@ -1256,7 +1196,7 @@
         function startAnalysis() {
             // 检查API设置
             if (!state.apiKey) {
-                showToast('请先在设置中填写API Key并保存！', 'error');
+                alert('请先在设置中填写API Key并保存！');
                 showPage('settings');
                 return;
             }
@@ -1275,7 +1215,7 @@
             if (!cleanedProblem || cleanedProblem === '-' || cleanedProblem.length < 2 || 
                 cleanedProblem.includes('请') || cleanedProblem.includes('识别') || 
                 cleanedProblem.includes('正在')) {
-                showToast('请先输入题目', 'error');
+                alert('请先输入或识别题目');
                 return;
             }
             state.problemText = cleanedProblem;
@@ -1285,15 +1225,11 @@
             console.log('显示题目:', state.problemText);
             document.getElementById('problemText').textContent = state.problemText;
             
-            // 显示骨架屏加载状态
+            // 显示加载状态
             document.getElementById('analysisContent').innerHTML = `
-                <div class="skeleton-container">
-                    <div class="skeleton skeleton-title"></div>
-                    <div class="skeleton skeleton-text" style="width: 90%"></div>
-                    <div class="skeleton skeleton-text" style="width: 75%"></div>
-                    <div class="skeleton skeleton-text" style="width: 85%"></div>
-                    <div class="skeleton skeleton-text" style="width: 60%"></div>
-                    <p style="margin-top: 16px; color: var(--text-light); text-align: center;">🤔 AI 正在分析题目...</p>
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 12px; color: var(--text-light);">正在分析题目，请稍候...</p>
                 </div>
             `;
             
@@ -1310,7 +1246,7 @@
                 `;
             }).catch(err => {
                 console.error('分析失败:', err);
-                showToast('分析失败: ' + (err.message || '请检查API设置'), 'error');
+                alert('分析失败: ' + (err.message || '请检查API设置'));
                 document.getElementById('analysisContent').innerHTML = `
                     <div class="tip" style="background: #ffebee; color: #c62828;">
                         分析失败: ${err.message || '请检查API设置'}
@@ -1797,7 +1733,7 @@
                     successMsg = '🎉 太棒了！题目完成！';
                 }
                 
-                showToast(successMsg, 'success');
+                alert(successMsg);
                 speak(currentStep.type === 'step4_verify' ? '太棒了，题目完成！' : '答对了！');
                 
                 // 答对：跳转到下一步
@@ -1810,22 +1746,9 @@
                 
                 // 检查是否连续错3次，触发选择题
                 if (state.errorCount >= 3) {
-                    // 保存到错题本
-                    const wrongItem = {
-                        problem: state.problemText,
-                        step: currentStep,
-                        errorCount: state.errorCount,
-                        timestamp: Date.now()
-                    };
-                    // 检查是否已存在
-                    const exists = state.sessionData.wrongAnswers.some(w => w.problem === wrongItem.problem);
-                    if (!exists) {
-                        state.sessionData.wrongAnswers.push(wrongItem);
-                        saveSession();
-                    }
                     showMultipleChoice(currentStep);
                 } else {
-                    showToast(`不对哦，再试一次！💪 (还剩${3 - state.errorCount}次机会)`, 'error');
+                    alert(`不对哦，再试一次！💪 (还剩${3 - state.errorCount}次机会)`);
                     speak('再想想看，给你一点点提示');
                     
                     // 答错后：清空输入框，重新渲染当前步骤，让用户重新填写
@@ -1882,11 +1805,11 @@
             state.errorCount = 0;  // 重置计数
             
             if (isCorrect) {
-                showToast('🎉 答对了！继续加油～', 'success');
+                alert('🎉 答对了！继续加油～');
                 speak('答对了！');
                 setTimeout(() => nextStep(), 1000);
             } else {
-                showToast('再想想哦～', 'info');
+                alert('再想想哦～');
                 speak('再想想看');
             }
         };
@@ -2012,46 +1935,6 @@
                 if (analysis.includes(k)) points.push(k);
             });
             return points.length > 0 ? points : ['数学思维'];
-        }
-
-        // ========== Wrong Answers ==========
-        function showWrongAnswers() {
-            showPage('wrong');
-            
-            const wrongList = document.getElementById('wrongAnswersList');
-            const wrongAnswers = state.sessionData.wrongAnswers || [];
-            
-            if (wrongAnswers.length === 0) {
-                wrongList.innerHTML = `
-                    <div style="text-align: center; padding: 40px 20px;">
-                        <div style="font-size: 48px; margin-bottom: 16px;">✅</div>
-                        <p style="color: var(--text-light);">暂无错题记录</p>
-                        <p style="color: var(--text-light); font-size: 13px; margin-top: 8px;">连续答错3次会自动收录到这里</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            wrongList.innerHTML = wrongAnswers.map((item, index) => `
-                <div class="wrong-item" onclick="redoWrongProblem(${index})">
-                    <div class="problem">${item.problem.substring(0, 50)}${item.problem.length > 50 ? '...' : ''}</div>
-                    <div class="meta">
-                        错误次数: <span class="error-count">${item.errorCount}</span>次
-                        · ${new Date(item.timestamp).toLocaleDateString()}
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function redoWrongProblem(index) {
-            const wrongItem = state.sessionData.wrongAnswers[index];
-            if (wrongItem) {
-                state.problemText = wrongItem.problem;
-                state.errorCount = 0;
-                document.getElementById('problemText').textContent = state.problemText;
-                document.getElementById('guidanceProblemText').textContent = state.problemText;
-                startGuidance();
-            }
         }
 
         // ========== Weakness Report ==========
