@@ -893,14 +893,15 @@
 
     <script>
         // ========== Prompt 常量 ==========
-        // 阶段1：分析题目
+        // 【OPTIMIZATION-1】阶段1：分析题目 - 需要替换为 ANALYSIS_PROMPT_V2，增加JSON输出格式
         const ANALYSIS_PROMPT = `你是小学数学老师。分析这道题：
 - 提取已知数
 - 提取关键词（如"比...多"、"合计"）
 - 问什么问题
 只列出要点，禁止给出计算方法或答案。`;
 
-        // 阶段2：引导对话
+        // 【OPTIMIZATION-2】阶段2：引导对话 - 需要替换为分层Prompt（低年级/高年级）
+        // 当前问题：未分年级、追问逻辑简单、缺少认知诊断
         const GUIDANCE_PROMPT = `你是小学数学老师，用苏格拉底方法引导孩子思考。
 
 核心原则：
@@ -960,6 +961,8 @@
             guidanceSteps: [],
             currentStep: 0,
             hintLevel: 0,
+            // 【OPTIMIZATION-6】状态管理 - 需要添加年级设置和学习状态跟踪
+            // 建议添加：grade, learningState等字段
             errorCount: 0,  // 连续错误计数
             userAnswers: [],
             sessionData: {
@@ -1845,7 +1848,8 @@
             }
         }
         
-        // 显示选择题（连续错3次时触发）
+        // 【OPTIMIZATION-3】显示选择题（连续错3次时触发）- 需要改为AI动态生成高质量选项
+        // 当前问题：选项随机生成，干扰项不反映真实错误类型
         function showMultipleChoice(currentStep) {
             // 生成3个选项（1个正确+2个干扰）
             const correctAnswer = currentStep.answer || '65';
@@ -2112,6 +2116,8 @@
         }
 
         // ========== 增强的智能回复 - 包含计算验证 ==========
+        // 【OPTIMIZATION-4】需要优化追问逻辑，减少无效追问，增加追问决策树
+        // 当前问题：追问过于频繁，缺少追问冷却机制
         async function getSmartResponse(userInput) {
             // 先检查用户是否给出了答案或算式
             const hasNumber = /\d+/.test(userInput);
@@ -2182,6 +2188,8 @@ ${context}
         }
 
         // ========== 计算验证 - 检查列式和计算是否正确 ==========
+        // 【OPTIMIZATION-5】需要添加分层验证策略（低年级/高年级）
+        // 当前问题：验证过于简单，缺少结构化验证步骤
         async function validateAnswer(userInput) {
             if (!problemAnalysis) return { isValidAnswer: false, isValidFormula: false };
             
